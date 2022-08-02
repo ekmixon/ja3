@@ -86,7 +86,7 @@ def convert_to_ja3_segment(data, element_width):
     :type element_width: int
     :returns: str
     """
-    int_vals = list()
+    int_vals = []
     data = bytearray(data)
     if len(data) % element_width:
         message = '{count} is not a multiple of {width}'
@@ -112,7 +112,7 @@ def process_extensions(client_handshake):
         # Needed to preserve commas on the join
         return ["", "", ""]
 
-    exts = list()
+    exts = []
     elliptic_curve = ""
     elliptic_curve_point_format = ""
     for ext_val, ext_data in client_handshake.extensions:
@@ -129,11 +129,11 @@ def process_extensions(client_handshake):
         else:
             continue
 
-    results = list()
-    results.append("-".join([str(x) for x in exts]))
-    results.append(elliptic_curve)
-    results.append(elliptic_curve_point_format)
-    return results
+    return [
+        "-".join([str(x) for x in exts]),
+        elliptic_curve,
+        elliptic_curve_point_format,
+    ]
 
 
 def process_pcap(pcap, any_port=False):
@@ -148,10 +148,10 @@ def process_pcap(pcap, any_port=False):
     linktype = pcap.datalink()
     if linktype == dpkt.pcap.DLT_LINUX_SLL:
         decoder = dpkt.sll.SLL
-    elif linktype == dpkt.pcap.DLT_NULL or linktype == dpkt.pcap.DLT_LOOP:
+    elif linktype in [dpkt.pcap.DLT_NULL, dpkt.pcap.DLT_LOOP]:
         decoder = dpkt.loopback.Loopback
 
-    results = list()
+    results = []
     for timestamp, buf in pcap:
         try:
             eth = decoder(buf)
@@ -178,7 +178,7 @@ def process_pcap(pcap, any_port=False):
         if tls_handshake[0] != TLS_HANDSHAKE:
             continue
 
-        records = list()
+        records = []
 
         try:
             records, bytes_used = dpkt.ssl.tls_multi_factory(tcp.data)
@@ -211,10 +211,8 @@ def process_pcap(pcap, any_port=False):
             client_handshake = handshake.data
             buf, ptr = parse_variable_array(client_handshake.data, 1)
             buf, ptr = parse_variable_array(client_handshake.data[ptr:], 2)
-            ja3 = [str(client_handshake.version)]
+            ja3 = [str(client_handshake.version), convert_to_ja3_segment(buf, 2)]
 
-            # Cipher Suites (16 bit values)
-            ja3.append(convert_to_ja3_segment(buf, 2))
             ja3 += process_extensions(client_handshake)
             ja3 = ",".join(ja3)
 

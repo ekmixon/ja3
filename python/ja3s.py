@@ -46,13 +46,8 @@ def process_extensions(server_handshake):
         # Needed to preserve commas on the join
         return [""]
 
-    exts = list()
-    for ext_val, ext_data in server_handshake.extensions:
-        exts.append(ext_val)
-
-    results = list()
-    results.append("-".join([str(x) for x in exts]))
-    return results
+    exts = [ext_val for ext_val, ext_data in server_handshake.extensions]
+    return ["-".join([str(x) for x in exts])]
 
 
 def process_pcap(pcap, any_port=False):
@@ -67,10 +62,10 @@ def process_pcap(pcap, any_port=False):
     linktype = pcap.datalink()
     if linktype == dpkt.pcap.DLT_LINUX_SLL:
         decoder = dpkt.sll.SLL
-    elif linktype == dpkt.pcap.DLT_NULL or linktype == dpkt.pcap.DLT_LOOP:
+    elif linktype in [dpkt.pcap.DLT_NULL, dpkt.pcap.DLT_LOOP]:
         decoder = dpkt.loopback.Loopback
 
-    results = list()
+    results = []
     for timestamp, buf in pcap:
         try:
             eth = decoder(buf)
@@ -97,7 +92,7 @@ def process_pcap(pcap, any_port=False):
         if tls_handshake[0] != TLS_HANDSHAKE:
             continue
 
-        records = list()
+        records = []
 
         try:
             records, bytes_used = dpkt.ssl.tls_multi_factory(tcp.data)
@@ -128,10 +123,8 @@ def process_pcap(pcap, any_port=False):
                 continue
 
             server_handshake = handshake.data
-            ja3 = [str(server_handshake.version)]
+            ja3 = [str(server_handshake.version), str(server_handshake.cipher_suite)]
 
-            # Cipher Suites (16 bit values)
-            ja3.append(str(server_handshake.cipher_suite))
             ja3 += process_extensions(server_handshake)
             ja3 = ",".join(ja3)
 
